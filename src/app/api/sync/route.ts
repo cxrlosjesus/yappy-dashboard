@@ -2,9 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { crearTransaccion } from '@/lib/queries'
 import type { YappyTransaccion } from '@/types/yappy'
 
-// Este endpoint recibe transacciones y las guarda en Notion
-// Se llama manualmente (o desde Claude) con los datos del Gmail
 export async function POST(req: NextRequest) {
+  // Verificar secret para acceso programático
+  const secret = req.headers.get('x-sync-secret')
+  if (!secret || secret !== process.env.AUTH_SECRET) {
+    return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+  }
+
   try {
     const body = await req.json()
     const transacciones: Omit<YappyTransaccion, 'id'>[] = Array.isArray(body)
