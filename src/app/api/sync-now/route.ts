@@ -1,16 +1,12 @@
 import { NextResponse } from 'next/server'
+import { runGmailSync } from '@/lib/gmail-sync-logic'
 
-// Este endpoint es llamado desde el dashboard (protegido por cookie de sesión via middleware)
-// Internamente llama al gmail-sync con el secret
-export async function POST(req: Request) {
-  const baseUrl = process.env.VERCEL_URL
-    ? `https://${process.env.VERCEL_URL}`
-    : 'http://localhost:3000'
-
-  const res = await fetch(`${baseUrl}/api/gmail-sync`, {
-    headers: { 'Authorization': `Bearer ${process.env.AUTH_SECRET}` },
-  })
-
-  const data = await res.json()
-  return NextResponse.json(data)
+export async function POST() {
+  try {
+    const result = await runGmailSync()
+    return NextResponse.json({ ok: true, ...result })
+  } catch (error: any) {
+    console.error('Error en sync-now:', error)
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
 }
