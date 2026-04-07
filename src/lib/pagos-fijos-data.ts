@@ -6,7 +6,7 @@ export const PAGOS_FIJOS: PagoFijo[] = [
   { id: 'depa',           nombre: 'Departamento',     monto: 174.50, emoji: '🏠', categoria: 'transferencia' },
   { id: 'maestria',       nombre: 'Maestría',          monto: 80.00,  emoji: '🎓', categoria: 'transferencia' },
   { id: 'poliza',         nombre: 'Póliza',            monto: 12.50,  emoji: '🛡️', categoria: 'transferencia' },
-  { id: 'telefono',       nombre: 'Teléfono',          monto: 12.55,  emoji: '📱', categoria: 'transferencia' },
+  { id: 'telefono',       nombre: 'Tigo',               monto: 12.55,  emoji: '📱', categoria: 'cargo_bancario', dia_cobro: 15 },
 
   // ── Ahorro ────────────────────────────────────────────────────────────────
   { id: 'ahorro-bg',      nombre: 'Ahorro Banco General', monto: 65.00, emoji: '💰', categoria: 'ahorro' },
