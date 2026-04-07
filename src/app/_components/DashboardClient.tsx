@@ -432,7 +432,7 @@ export default function DashboardClient({ resumen }: { resumen: YappyResumen }) 
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#7B5EA7', display: 'inline-block' }} />
-                  <span style={{ fontSize: 13, fontWeight: 600, color: '#111' }}>Recurrentes</span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: '#111' }}>Pagos fijos</span>
                 </div>
                 <span style={{ fontSize: 13, color: '#aaa' }}>→</span>
               </div>

@@ -1,6 +1,6 @@
-import RecurrentesClient from '@/app/_components/RecurrentesClient'
-import { PAGOS_RECURRENTES } from '@/lib/recurrentes-data'
+import PagosFijosClient from '@/app/_components/PagosFijosClient'
+import { PAGOS_FIJOS } from '@/lib/pagos-fijos-data'
 
 export default function RecurrentesPage() {
-  return <RecurrentesClient pagos={PAGOS_RECURRENTES} />
+  return <PagosFijosClient pagos={PAGOS_FIJOS} />
 }
