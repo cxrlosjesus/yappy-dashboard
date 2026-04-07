@@ -10,65 +10,125 @@ function fmt(n: number) {
   return '$' + n.toLocaleString('es-PA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
-function getQuincenaId(): string {
-  const hoy = new Date()
-  const mitad = hoy.getDate() <= 15 ? '1' : '2'
-  return `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-Q${mitad}`
+// ── Lógica de quincenas ────────────────────────────────────────────────────────
+
+/** Próxima fecha de quincena (12 o 26) a partir de una fecha dada */
+function getNextQuincena(from: Date): Date {
+  const day = from.getDate()
+  const m = from.getMonth()
+  const y = from.getFullYear()
+  if (day <= 12) return new Date(y, m, 12)
+  if (day <= 26) return new Date(y, m, 26)
+  return new Date(y, m + 1, 12)
 }
 
-function getQuincenaLabel(): string {
-  const hoy = new Date()
-  const mitad = hoy.getDate() <= 15 ? 'Primera' : 'Segunda'
-  return `${mitad} quincena · ${MESES[hoy.getMonth()]} ${hoy.getFullYear()}`
+/** Quincena anterior a una fecha de quincena */
+function getPrevQuincena(q: Date): Date {
+  if (q.getDate() === 12) return new Date(q.getFullYear(), q.getMonth() - 1, 26)
+  return new Date(q.getFullYear(), q.getMonth(), 12)
 }
 
-function getProximoCobro(dia: number): string {
+/** Próxima fecha de cobro a partir de hoy */
+function getNextDueDate(dia_cobro: number): Date {
   const hoy = new Date()
-  const diaHoy = hoy.getDate()
-  let fecha: Date
-  if (dia > diaHoy) {
-    fecha = new Date(hoy.getFullYear(), hoy.getMonth(), dia)
-  } else {
-    fecha = new Date(hoy.getFullYear(), hoy.getMonth() + 1, dia)
+  const thisMonth = new Date(hoy.getFullYear(), hoy.getMonth(), dia_cobro)
+  if (thisMonth > hoy) return thisMonth
+  return new Date(hoy.getFullYear(), hoy.getMonth() + 1, dia_cobro)
+}
+
+/**
+ * Dado un cobro en dia_cobro, calcula si la quincenaDate es una de las
+ * dos quincenas que contribuyen a ese pago. Si sí, retorna monto/2.
+ */
+function getAllocacion(dia_cobro: number, monto: number, quincenaDate: Date): { amount: number; dueDate: Date } | null {
+  const nextDue = getNextDueDate(dia_cobro)
+  const nextDueTime = nextDue.getTime()
+
+  // Generar candidatas alrededor del vencimiento
+  const y = nextDue.getFullYear()
+  const m = nextDue.getMonth()
+  const candidatas = [
+    new Date(y, m - 2, 26),
+    new Date(y, m - 1, 12),
+    new Date(y, m - 1, 26),
+    new Date(y, m, 12),
+    new Date(y, m, 26),
+  ].filter(q => q.getTime() < nextDueTime)
+
+  const Q2 = candidatas[candidatas.length - 1]
+  const Q1 = candidatas[candidatas.length - 2]
+
+  if (!Q1 || !Q2) return null
+
+  const qTime = quincenaDate.getTime()
+  if (qTime === Q1.getTime() || qTime === Q2.getTime()) {
+    return { amount: monto / 2, dueDate: nextDue }
   }
-  const diff = Math.ceil((fecha.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24))
-  if (diff === 0) return 'Hoy'
-  if (diff === 1) return 'Mañana'
-  return `${fecha.getDate()} ${MESES[fecha.getMonth()]}`
+  return null
 }
+
+// ── Tipos internos ─────────────────────────────────────────────────────────────
+
+interface ChecklistItem {
+  id: string
+  nombre: string
+  monto: number
+  emoji: string
+  categoria: PagoFijoCategoria
+  nota?: string
+}
+
+function buildItems(pagos: PagoFijo[], quincenaDate: Date): ChecklistItem[] {
+  const items: ChecklistItem[] = []
+  for (const p of pagos) {
+    if ((p.categoria === 'suscripcion' || p.categoria === 'cargo_bancario') && p.dia_cobro) {
+      const alloc = getAllocacion(p.dia_cobro, p.monto, quincenaDate)
+      if (alloc) {
+        items.push({
+          id: p.id,
+          nombre: p.nombre,
+          monto: alloc.amount,
+          emoji: p.emoji,
+          categoria: p.categoria,
+          nota: `Para cobro del ${alloc.dueDate.getDate()} ${MESES[alloc.dueDate.getMonth()]}`,
+        })
+      }
+    } else if (p.categoria !== 'suscripcion' && p.categoria !== 'cargo_bancario') {
+      items.push({ id: p.id, nombre: p.nombre, monto: p.monto, emoji: p.emoji, categoria: p.categoria })
+    }
+  }
+  return items
+}
+
+// ── Configuración visual ───────────────────────────────────────────────────────
 
 const CATEGORIA_CONFIG: Record<PagoFijoCategoria, { label: string; color: string }> = {
-  transferencia:  { label: 'Transferencias',          color: '#0057FF' },
-  ahorro:         { label: 'Ahorro',                  color: '#1D9E75' },
-  variable:       { label: 'Gastos variables',        color: '#BA7517' },
-  suscripcion:    { label: 'Suscripciones',           color: '#7B5EA7' },
-  cargo_bancario: { label: 'Cargos bancarios',        color: '#378ADD' },
+  transferencia:  { label: 'Transferencias',    color: '#0057FF' },
+  ahorro:         { label: 'Ahorro',            color: '#1D9E75' },
+  variable:       { label: 'Gastos variables',  color: '#BA7517' },
+  suscripcion:    { label: 'Suscripciones',     color: '#7B5EA7' },
+  cargo_bancario: { label: 'Cargos bancarios',  color: '#378ADD' },
 }
 
-const ORDEN_CATEGORIAS: PagoFijoCategoria[] = [
-  'transferencia', 'ahorro', 'variable', 'suscripcion', 'cargo_bancario'
-]
+const ORDEN: PagoFijoCategoria[] = ['transferencia', 'ahorro', 'variable', 'suscripcion', 'cargo_bancario']
 
-function PagoItem({
-  pago, checked, onToggle,
-}: {
-  pago: PagoFijo
+// ── Componentes ────────────────────────────────────────────────────────────────
+
+function PagoItem({ item, checked, onToggle }: {
+  item: ChecklistItem
   checked: boolean
   onToggle: () => void
 }) {
-  const proximo = pago.dia_cobro ? getProximoCobro(pago.dia_cobro) : null
-
   return (
     <div
       onClick={onToggle}
       style={{
         display: 'flex', alignItems: 'center', gap: 12,
         padding: '13px 0', borderBottom: '0.5px solid #f0f0f0',
-        cursor: 'pointer', opacity: checked ? 0.45 : 1,
+        cursor: 'pointer', opacity: checked ? 0.4 : 1,
         transition: 'opacity 0.2s',
       }}
     >
-      {/* Checkbox */}
       <div style={{
         width: 22, height: 22, borderRadius: 6, flexShrink: 0,
         border: checked ? 'none' : '2px solid #DDD',
@@ -79,47 +139,35 @@ function PagoItem({
         {checked && <span style={{ color: '#fff', fontSize: 13, fontWeight: 700 }}>✓</span>}
       </div>
 
-      {/* Emoji */}
-      <span style={{ fontSize: 20, flexShrink: 0 }}>{pago.emoji}</span>
+      <span style={{ fontSize: 20, flexShrink: 0 }}>{item.emoji}</span>
 
-      {/* Info */}
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{
-          fontSize: 14, fontWeight: 500, color: '#111',
-          textDecoration: checked ? 'line-through' : 'none',
-        }}>
-          {pago.nombre}
+        <div style={{ fontSize: 14, fontWeight: 500, color: '#111', textDecoration: checked ? 'line-through' : 'none' }}>
+          {item.nombre}
         </div>
-        {proximo && (
-          <div style={{ fontSize: 11, color: '#aaa', marginTop: 1 }}>{proximo}</div>
-        )}
-        {pago.notas && (
-          <div style={{ fontSize: 11, color: '#aaa', marginTop: 1 }}>{pago.notas}</div>
+        {item.nota && (
+          <div style={{ fontSize: 11, color: '#aaa', marginTop: 1 }}>{item.nota}</div>
         )}
       </div>
 
-      {/* Monto */}
-      <span style={{
-        fontSize: 14, fontWeight: 700, color: '#111', flexShrink: 0,
-        textDecoration: checked ? 'line-through' : 'none',
-      }}>
-        {fmt(pago.monto)}
+      <span style={{ fontSize: 14, fontWeight: 700, color: '#111', flexShrink: 0, textDecoration: checked ? 'line-through' : 'none' }}>
+        {fmt(item.monto)}
       </span>
     </div>
   )
 }
 
-function Seccion({
-  categoria, pagos, checked, onToggle,
-}: {
+function Seccion({ categoria, items, checked, onToggle }: {
   categoria: PagoFijoCategoria
-  pagos: PagoFijo[]
+  items: ChecklistItem[]
   checked: Set<string>
   onToggle: (id: string) => void
 }) {
+  if (items.length === 0) return null
   const config = CATEGORIA_CONFIG[categoria]
-  const total = pagos.reduce((s, p) => s + p.monto, 0)
-  const pagado = pagos.filter(p => checked.has(p.id)).reduce((s, p) => s + p.monto, 0)
+  const total = items.reduce((s, i) => s + i.monto, 0)
+  const pagado = items.filter(i => checked.has(i.id)).reduce((s, i) => s + i.monto, 0)
+  const listo = pagado === total
 
   return (
     <div style={{ background: '#fff', borderRadius: 16, padding: '14px 16px', marginBottom: 10 }}>
@@ -130,29 +178,33 @@ function Seccion({
         </div>
         <div style={{ textAlign: 'right' }}>
           <span style={{ fontSize: 13, fontWeight: 700, color: '#111' }}>{fmt(total)}</span>
-          {pagado > 0 && pagado < total && (
-            <span style={{ fontSize: 11, color: '#1D9E75', display: 'block' }}>{fmt(pagado)} pagado</span>
-          )}
-          {pagado === total && (
-            <span style={{ fontSize: 11, color: '#1D9E75', display: 'block', fontWeight: 700 }}>✓ Listo</span>
-          )}
+          {listo
+            ? <span style={{ fontSize: 11, color: '#1D9E75', display: 'block', fontWeight: 700 }}>✓ Listo</span>
+            : pagado > 0 && <span style={{ fontSize: 11, color: '#aaa', display: 'block' }}>{fmt(pagado)} pagado</span>
+          }
         </div>
       </div>
-      {pagos.map(p => (
-        <PagoItem key={p.id} pago={p} checked={checked.has(p.id)} onToggle={() => onToggle(p.id)} />
+      {items.map(i => (
+        <PagoItem key={i.id} item={i} checked={checked.has(i.id)} onToggle={() => onToggle(i.id)} />
       ))}
     </div>
   )
 }
 
+// ── Página principal ───────────────────────────────────────────────────────────
+
 export default function PagosFijosClient({ pagos }: { pagos: PagoFijo[] }) {
-  const quincenaId = getQuincenaId()
-  const storageKey = `checklist_${quincenaId}`
+  const quincenaDate = useMemo(() => getNextQuincena(new Date()), [])
+  const quincenaId   = `${quincenaDate.getFullYear()}-${quincenaDate.getMonth() + 1}-${quincenaDate.getDate()}`
+  const storageKey   = `checklist_${quincenaId}`
+
+  const quincenaLabel = `${quincenaDate.getDate()} ${MESES[quincenaDate.getMonth()]} ${quincenaDate.getFullYear()}`
+
+  const items = useMemo(() => buildItems(pagos, quincenaDate), [pagos, quincenaDate])
 
   const [checked, setChecked] = useState<Set<string>>(new Set())
   const [loaded, setLoaded] = useState(false)
 
-  // Cargar desde localStorage
   useEffect(() => {
     try {
       const saved = localStorage.getItem(storageKey)
@@ -161,7 +213,6 @@ export default function PagosFijosClient({ pagos }: { pagos: PagoFijo[] }) {
     setLoaded(true)
   }, [storageKey])
 
-  // Guardar en localStorage al cambiar
   useEffect(() => {
     if (!loaded) return
     localStorage.setItem(storageKey, JSON.stringify(Array.from(checked)))
@@ -170,38 +221,34 @@ export default function PagosFijosClient({ pagos }: { pagos: PagoFijo[] }) {
   function toggle(id: string) {
     setChecked(prev => {
       const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
+      next.has(id) ? next.delete(id) : next.add(id)
       return next
     })
   }
 
-  const totalGeneral = useMemo(() => pagos.reduce((s, p) => s + p.monto, 0), [pagos])
-  const totalPagado = useMemo(() =>
-    pagos.filter(p => checked.has(p.id)).reduce((s, p) => s + p.monto, 0),
-  [pagos, checked])
-  const porcentaje = totalGeneral > 0 ? (totalPagado / totalGeneral) * 100 : 0
+  const totalGeneral = useMemo(() => items.reduce((s, i) => s + i.monto, 0), [items])
+  const totalPagado  = useMemo(() => items.filter(i => checked.has(i.id)).reduce((s, i) => s + i.monto, 0), [items, checked])
+  const porcentaje   = totalGeneral > 0 ? (totalPagado / totalGeneral) * 100 : 0
 
   const porCategoria = useMemo(() => {
-    const map = new Map<PagoFijoCategoria, PagoFijo[]>()
-    for (const cat of ORDEN_CATEGORIAS) map.set(cat, [])
-    for (const p of pagos) map.get(p.categoria)!.push(p)
+    const map = new Map<PagoFijoCategoria, ChecklistItem[]>()
+    for (const cat of ORDEN) map.set(cat, [])
+    for (const item of items) map.get(item.categoria)!.push(item)
     return map
-  }, [pagos])
+  }, [items])
 
   return (
     <div style={{ maxWidth: 480, margin: '0 auto', paddingBottom: 40 }}>
 
-      {/* Header */}
       <div style={{ background: '#1A1A2E', color: '#fff', padding: '48px 20px 24px', borderRadius: '0 0 24px 24px' }}>
         <Link href="/dashboard" style={{ color: 'rgba(255,255,255,0.6)', textDecoration: 'none', fontSize: 13 }}>
           ← Dashboard
         </Link>
-        <div style={{ fontSize: 13, opacity: 0.6, marginTop: 8, marginBottom: 4 }}>Checklist</div>
+        <div style={{ fontSize: 13, opacity: 0.6, marginTop: 8, marginBottom: 4 }}>Quincena del</div>
         <div style={{ fontSize: 24, fontWeight: 700 }}>Pagos fijos</div>
-        <div style={{ fontSize: 13, opacity: 0.7, marginTop: 2 }}>{getQuincenaLabel()}</div>
+        <div style={{ fontSize: 15, fontWeight: 700, opacity: 0.9, marginTop: 2 }}>{quincenaLabel}</div>
 
-        {/* Progreso */}
+        {/* Barra de progreso */}
         <div style={{ marginTop: 20 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
             <span style={{ fontSize: 13, opacity: 0.8 }}>
@@ -212,14 +259,14 @@ export default function PagosFijosClient({ pagos }: { pagos: PagoFijo[] }) {
           <div style={{ background: 'rgba(255,255,255,0.15)', borderRadius: 8, height: 8, overflow: 'hidden' }}>
             <div style={{
               height: '100%', borderRadius: 8,
-              background: porcentaje === 100 ? '#1D9E75' : '#0057FF',
+              background: porcentaje === 100 ? '#1D9E75' : '#4A90FF',
               width: `${porcentaje}%`,
               transition: 'width 0.4s ease',
             }} />
           </div>
         </div>
 
-        {/* Resumen pagado / pendiente */}
+        {/* Resumen */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 16 }}>
           <div style={{ background: 'rgba(255,255,255,0.1)', borderRadius: 12, padding: '12px' }}>
             <div style={{ fontSize: 11, opacity: 0.7 }}>Pagado</div>
@@ -233,19 +280,15 @@ export default function PagosFijosClient({ pagos }: { pagos: PagoFijo[] }) {
       </div>
 
       <div style={{ padding: '16px 16px 0' }}>
-        {ORDEN_CATEGORIAS.map(cat => {
-          const items = porCategoria.get(cat)!
-          if (items.length === 0) return null
-          return (
-            <Seccion
-              key={cat}
-              categoria={cat}
-              pagos={items}
-              checked={checked}
-              onToggle={toggle}
-            />
-          )
-        })}
+        {ORDEN.map(cat => (
+          <Seccion
+            key={cat}
+            categoria={cat}
+            items={porCategoria.get(cat)!}
+            checked={checked}
+            onToggle={toggle}
+          />
+        ))}
       </div>
     </div>
   )
