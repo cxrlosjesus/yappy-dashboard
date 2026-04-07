@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useState, useEffect, useMemo } from 'react'
 import type { PagoFijo, PagoFijoCategoria } from '@/types/pagos-fijos'
+import type { Factura } from '@/lib/facturas-queries'
 
 const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
 
@@ -78,20 +79,44 @@ interface ChecklistItem {
   nota?: string
 }
 
-function buildItems(pagos: PagoFijo[], quincenaDate: Date): ChecklistItem[] {
+function buildItems(pagos: PagoFijo[], quincenaDate: Date, facturas: Factura[]): ChecklistItem[] {
   const items: ChecklistItem[] = []
+
+  // Mapa de facturas dinámicas por servicio (más reciente)
+  const facturaMap = new Map<string, Factura>()
+  for (const f of facturas) {
+    if (!facturaMap.has(f.servicio)) facturaMap.set(f.servicio, f)
+  }
+
   for (const p of pagos) {
     if ((p.categoria === 'suscripcion' || p.categoria === 'cargo_bancario') && p.dia_cobro) {
-      const alloc = getAllocacion(p.dia_cobro, p.monto, quincenaDate)
-      if (alloc) {
-        items.push({
-          id: p.id,
-          nombre: p.nombre,
-          monto: alloc.amount,
-          emoji: p.emoji,
-          categoria: p.categoria,
-          nota: `Para cobro del ${alloc.dueDate.getDate()} ${MESES[alloc.dueDate.getMonth()]}`,
-        })
+      // Si tiene factura dinámica, usar ese monto y vencimiento
+      const factura = facturaMap.get(p.nombre)
+      if (factura) {
+        const venc = new Date(factura.vencimiento + 'T12:00:00')
+        const alloc = getAllocacion(venc.getDate(), factura.monto, quincenaDate)
+        if (alloc) {
+          items.push({
+            id: p.id,
+            nombre: p.nombre,
+            monto: alloc.amount,
+            emoji: p.emoji,
+            categoria: p.categoria,
+            nota: `Para cobro del ${alloc.dueDate.getDate()} ${MESES[alloc.dueDate.getMonth()]} · ${factura.mes}`,
+          })
+        }
+      } else {
+        const alloc = getAllocacion(p.dia_cobro, p.monto, quincenaDate)
+        if (alloc) {
+          items.push({
+            id: p.id,
+            nombre: p.nombre,
+            monto: alloc.amount,
+            emoji: p.emoji,
+            categoria: p.categoria,
+            nota: `Para cobro del ${alloc.dueDate.getDate()} ${MESES[alloc.dueDate.getMonth()]}`,
+          })
+        }
       }
     } else if (p.categoria !== 'suscripcion' && p.categoria !== 'cargo_bancario') {
       items.push({ id: p.id, nombre: p.nombre, monto: p.monto, emoji: p.emoji, categoria: p.categoria })
@@ -193,14 +218,14 @@ function Seccion({ categoria, items, checked, onToggle }: {
 
 // ── Página principal ───────────────────────────────────────────────────────────
 
-export default function PagosFijosClient({ pagos }: { pagos: PagoFijo[] }) {
+export default function PagosFijosClient({ pagos, facturas }: { pagos: PagoFijo[]; facturas: Factura[] }) {
   const quincenaDate = useMemo(() => getNextQuincena(new Date()), [])
   const quincenaId   = `${quincenaDate.getFullYear()}-${quincenaDate.getMonth() + 1}-${quincenaDate.getDate()}`
   const storageKey   = `checklist_${quincenaId}`
 
   const quincenaLabel = `${quincenaDate.getDate()} ${MESES[quincenaDate.getMonth()]} ${quincenaDate.getFullYear()}`
 
-  const items = useMemo(() => buildItems(pagos, quincenaDate), [pagos, quincenaDate])
+  const items = useMemo(() => buildItems(pagos, quincenaDate, facturas), [pagos, quincenaDate, facturas])
 
   const [checked, setChecked] = useState<Set<string>>(new Set())
   const [loaded, setLoaded] = useState(false)
