@@ -15,6 +15,7 @@ function pageToTransaccion(page: PageObjectResponse): YappyTransaccion {
     estado: props['Estado']?.select?.name ?? 'Completado',
     notas: props['Notas']?.rich_text?.[0]?.plain_text ?? '',
     categoria: (props['Categoria']?.select?.name ?? 'Personal') as CategoriaTransaccion,
+    concepto: props['Concepto']?.rich_text?.[0]?.plain_text ?? '',
   }
 }
 
@@ -70,6 +71,18 @@ export async function actualizarCategoria(
     page_id: id,
     properties: {
       Categoria: { select: { name: categoria } },
+    },
+  })
+}
+
+export async function actualizarConcepto(
+  id: string,
+  concepto: string
+): Promise<void> {
+  await notion.pages.update({
+    page_id: id,
+    properties: {
+      Concepto: { rich_text: [{ text: { content: concepto } }] },
     },
   })
 }

@@ -3,7 +3,8 @@
     "allow": [
       "mcp__claude_ai_Gmail__gmail_get_profile",
       "mcp__claude_ai_Gmail__gmail_search_messages",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "mcp__claude_ai_Notion__notion-update-data-source"
     ]
   }
 }

@@ -13,6 +13,7 @@ export interface YappyTransaccion {
   estado: EstadoTransaccion
   notas?: string
   categoria: CategoriaTransaccion
+  concepto?: string
 }
 
 // Resumen para el dashboard

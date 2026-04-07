@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { actualizarCategoria } from '@/lib/queries'
+import { actualizarCategoria, actualizarConcepto } from '@/lib/queries'
 import type { CategoriaTransaccion } from '@/types/yappy'
 
 const CATEGORIAS_VALIDAS: CategoriaTransaccion[] = ['Personal', 'Encargo', 'Colecta']
@@ -10,13 +10,19 @@ export async function PATCH(
 ) {
   try {
     const body = await req.json()
-    const { categoria } = body as { categoria: CategoriaTransaccion }
 
-    if (!CATEGORIAS_VALIDAS.includes(categoria)) {
-      return NextResponse.json({ error: 'Categoría inválida' }, { status: 400 })
+    if ('categoria' in body) {
+      const { categoria } = body as { categoria: CategoriaTransaccion }
+      if (!CATEGORIAS_VALIDAS.includes(categoria)) {
+        return NextResponse.json({ error: 'Categoría inválida' }, { status: 400 })
+      }
+      await actualizarCategoria(params.id, categoria)
     }
 
-    await actualizarCategoria(params.id, categoria)
+    if ('concepto' in body) {
+      await actualizarConcepto(params.id, body.concepto ?? '')
+    }
+
     return NextResponse.json({ ok: true })
   } catch (e) {
     console.error(e)

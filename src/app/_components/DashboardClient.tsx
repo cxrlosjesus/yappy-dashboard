@@ -104,8 +104,9 @@ function TransaccionRow({ t, onTap }: { t: YappyTransaccion; onTap: (t: YappyTra
         <div style={{ fontSize: 14, fontWeight: 500, color: '#111', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {t.de_para || t.descripcion || '—'}
         </div>
-        <div style={{ display: 'flex', gap: 5, marginTop: 3, alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 5, marginTop: 3, alignItems: 'center', flexWrap: 'wrap' }}>
           <span style={{ fontSize: 12, color: '#aaa' }}>{formatFecha(t.fecha)}</span>
+          {t.concepto && <span style={{ fontSize: 11, color: '#0057FF', fontWeight: 600 }}>{t.concepto}</span>}
           <CategoriaTag categoria={t.categoria} />
         </div>
       </div>
@@ -143,22 +144,28 @@ const CATEGORIA_DESC: Record<CategoriaTransaccion, string> = {
 function BottomSheet({ tx, onClose, onSaved }: {
   tx: YappyTransaccion
   onClose: () => void
-  onSaved: (id: string, categoria: CategoriaTransaccion) => void
+  onSaved: (id: string, categoria: CategoriaTransaccion, concepto: string) => void
 }) {
   const [selected, setSelected] = useState<CategoriaTransaccion>(tx.categoria)
+  const [concepto, setConcepto] = useState(tx.concepto ?? '')
   const [saving, setSaving] = useState(false)
 
   async function handleGuardar() {
-    if (selected === tx.categoria) { onClose(); return }
+    const categoriaChanged = selected !== tx.categoria
+    const conceptoChanged = concepto !== (tx.concepto ?? '')
+    if (!categoriaChanged && !conceptoChanged) { onClose(); return }
     setSaving(true)
     try {
+      const body: Record<string, string> = {}
+      if (categoriaChanged) body.categoria = selected
+      if (conceptoChanged) body.concepto = concepto
       const res = await fetch(`/api/transactions/${tx.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ categoria: selected }),
+        body: JSON.stringify(body),
       })
       if (res.ok) {
-        onSaved(tx.id, selected)
+        onSaved(tx.id, selected, concepto)
         onClose()
       }
     } finally {
@@ -195,6 +202,22 @@ function BottomSheet({ tx, onClose, onSaved }: {
             <TipoTag tipo={tx.tipo} />
           </div>
         </div>
+
+        {/* Concepto */}
+        <div style={{ fontSize: 12, color: '#aaa', marginBottom: 8, fontWeight: 600, letterSpacing: 0.5, textTransform: 'uppercase' }}>
+          Concepto
+        </div>
+        <input
+          type="text"
+          value={concepto}
+          onChange={e => setConcepto(e.target.value)}
+          placeholder="Ej: Barbero, Comida, Gasolina…"
+          style={{
+            width: '100%', padding: '12px 14px', borderRadius: 12, boxSizing: 'border-box',
+            border: '1.5px solid #E8E8E8', fontSize: 14, outline: 'none',
+            background: '#FAFAFA', color: '#111', marginBottom: 20,
+          }}
+        />
 
         {/* Opciones */}
         <div style={{ fontSize: 12, color: '#aaa', marginBottom: 10, fontWeight: 600, letterSpacing: 0.5, textTransform: 'uppercase' }}>
@@ -279,8 +302,8 @@ export default function DashboardClient({ resumen }: { resumen: YappyResumen }) 
     }
   }
 
-  const handleSaved = useCallback((id: string, categoria: CategoriaTransaccion) => {
-    setTransacciones(prev => prev.map(t => t.id === id ? { ...t, categoria } : t))
+  const handleSaved = useCallback((id: string, categoria: CategoriaTransaccion, concepto: string) => {
+    setTransacciones(prev => prev.map(t => t.id === id ? { ...t, categoria, concepto } : t))
   }, [])
 
   const mesesDisponibles = useMemo(() => {
