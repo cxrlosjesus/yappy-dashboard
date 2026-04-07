@@ -257,6 +257,27 @@ export default function DashboardClient({ resumen }: { resumen: YappyResumen }) 
   const [filtro, setFiltro] = useState<FilterMode>('todo')
   const [busqueda, setBusqueda] = useState('')
   const [selectedTx, setSelectedTx] = useState<YappyTransaccion | null>(null)
+  const [syncing, setSyncing] = useState(false)
+  const [syncMsg, setSyncMsg] = useState('')
+
+  async function handleSync() {
+    setSyncing(true)
+    setSyncMsg('')
+    try {
+      const res = await fetch('/api/sync-now', { method: 'POST' })
+      const data = await res.json()
+      if (data.ok) {
+        setSyncMsg(data.nuevas > 0 ? `+${data.nuevas} nuevas` : 'Al día')
+        if (data.nuevas > 0) window.location.reload()
+      } else {
+        setSyncMsg('Error')
+      }
+    } catch {
+      setSyncMsg('Error')
+    } finally {
+      setSyncing(false)
+    }
+  }
 
   const handleSaved = useCallback((id: string, categoria: CategoriaTransaccion) => {
     setTransacciones(prev => prev.map(t => t.id === id ? { ...t, categoria } : t))
@@ -326,9 +347,25 @@ export default function DashboardClient({ resumen }: { resumen: YappyResumen }) 
     <>
       <div style={{ maxWidth: 480, margin: '0 auto', padding: '0 0 40px' }}>
         <div style={{ background: '#0057FF', color: '#fff', padding: '48px 20px 20px', borderRadius: '0 0 24px 24px' }}>
-          <div style={{ fontSize: 13, opacity: 0.7, marginBottom: 4 }}>Panel personal</div>
-          <div style={{ fontSize: 24, fontWeight: 700 }}>Yappy</div>
-          <div style={{ fontSize: 13, opacity: 0.8, marginTop: 4 }}>{filtroLabel}</div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div>
+              <div style={{ fontSize: 13, opacity: 0.7, marginBottom: 4 }}>Panel personal</div>
+              <div style={{ fontSize: 24, fontWeight: 700 }}>Yappy</div>
+              <div style={{ fontSize: 13, opacity: 0.8, marginTop: 4 }}>{filtroLabel}</div>
+            </div>
+            <button
+              onClick={handleSync}
+              disabled={syncing}
+              style={{
+                background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: 12,
+                color: '#fff', padding: '8px 14px', fontSize: 13, fontWeight: 600,
+                cursor: syncing ? 'not-allowed' : 'pointer', marginTop: 4,
+                display: 'flex', alignItems: 'center', gap: 6,
+              }}
+            >
+              {syncing ? '⏳' : '🔄'} {syncing ? 'Sincronizando…' : syncMsg || 'Sincronizar'}
+            </button>
+          </div>
         </div>
 
         <div style={{ padding: '16px 16px 0' }}>
