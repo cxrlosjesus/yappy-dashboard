@@ -4,8 +4,8 @@ import Link from 'next/link'
 
 export const dynamic = 'force-dynamic'
 
-export default function AnalisisPage() {
-  const file = getLatestMovimientosFile()
+export default async function AnalisisPage() {
+  const file = await getLatestMovimientosFile()
 
   if (!file) {
     return (

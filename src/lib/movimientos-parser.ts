@@ -1,5 +1,6 @@
 import * as fs from 'fs'
 import * as path from 'path'
+import { list } from '@vercel/blob'
 import type { Movimiento, Categoria, ResumenMensual } from '@/types/movimientos'
 
 const DOWNLOADS_DIR = 'D:/core/Downloads'
@@ -197,7 +198,30 @@ export function buildResumenPorMes(movimientos: Movimiento[]): ResumenMensual[] 
 
 // ── Lectura del archivo ───────────────────────────────────────────────────────
 
-export function getLatestMovimientosFile(): { content: string; archivoFecha: string } | null {
+// Intenta leer desde Vercel Blob; si no hay token o no hay archivos, cae al filesystem local.
+export async function getLatestMovimientosFile(): Promise<{ content: string; archivoFecha: string } | null> {
+  // ── Vercel Blob ──
+  if (process.env.BLOB_READ_WRITE_TOKEN) {
+    try {
+      const { blobs } = await list({ prefix: 'movimientos/' })
+      const sorted = blobs
+        .filter(b => b.pathname.endsWith('.txt'))
+        .sort((a, b) => b.uploadedAt.getTime() - a.uploadedAt.getTime())
+
+      if (sorted.length > 0) {
+        const blob = sorted[0]
+        const res = await fetch(blob.url)
+        const content = await res.text()
+        const dateMatch = blob.pathname.match(/(\d{4}-\d{2}-\d{2})\.txt$/)
+        const archivoFecha = dateMatch ? dateMatch[1] : blob.uploadedAt.toISOString().slice(0, 10)
+        return { content, archivoFecha }
+      }
+    } catch {
+      // si falla Blob, cae al filesystem
+    }
+  }
+
+  // ── Filesystem local (dev) ──
   if (!fs.existsSync(DOWNLOADS_DIR)) return null
 
   const files = fs

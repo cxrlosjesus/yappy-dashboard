@@ -9,7 +9,7 @@ const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov'
 export default async function GastosPage() {
   const [transacciones, movimientosFile] = await Promise.all([
     getTransacciones(),
-    Promise.resolve(getLatestMovimientosFile()),
+    getLatestMovimientosFile(),
   ])
 
   const movimientos = movimientosFile ? parseMovimientos(movimientosFile.content) : []

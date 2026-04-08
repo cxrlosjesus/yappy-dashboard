@@ -465,6 +465,21 @@ export default function DashboardClient({ resumen }: { resumen: YappyResumen }) 
               <span style={{ fontSize: 13, color: '#aaa' }}>→</span>
             </div>
           </Link>
+          <Link href="/upload" style={{ textDecoration: 'none', display: 'block', marginBottom: 10 }}>
+            <div style={{
+              background: '#fff', borderRadius: 16, padding: '14px 16px',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#1D9E75', display: 'inline-block' }} />
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#111' }}>Subir movimientos</div>
+                  <div style={{ fontSize: 11, color: '#aaa', marginTop: 1 }}>Actualizar archivo del banco</div>
+                </div>
+              </div>
+              <span style={{ fontSize: 13, color: '#aaa' }}>→</span>
+            </div>
+          </Link>
           <Link href="/gastos" style={{ textDecoration: 'none', display: 'block', marginBottom: 12 }}>
             <div style={{
               background: '#fff', borderRadius: 16, padding: '14px 16px',

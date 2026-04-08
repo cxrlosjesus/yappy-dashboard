@@ -11,8 +11,8 @@ const PRESUPUESTO = [
   { cat: 'Suscripciones', label: 'Suscripciones',  mensual: 60  },
 ]
 
-export default function MovimientosPage() {
-  const file = getLatestMovimientosFile()
+export default async function MovimientosPage() {
+  const file = await getLatestMovimientosFile()
 
   if (!file) {
     return (
