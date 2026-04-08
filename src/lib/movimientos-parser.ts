@@ -210,7 +210,9 @@ export async function getLatestMovimientosFile(): Promise<{ content: string; arc
 
       if (sorted.length > 0) {
         const blob = sorted[0]
-        const res = await fetch(blob.url)
+        const res = await fetch(blob.url, {
+          headers: { Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}` },
+        })
         const content = await res.text()
         const dateMatch = blob.pathname.match(/(\d{4}-\d{2}-\d{2})\.txt$/)
         const archivoFecha = dateMatch ? dateMatch[1] : blob.uploadedAt.toISOString().slice(0, 10)

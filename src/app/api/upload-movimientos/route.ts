@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
 
   const arrayBuffer = await file.arrayBuffer()
   const blob = await put(blobName, arrayBuffer, {
-    access: 'public',
+    access: 'private',
     contentType: 'text/plain; charset=utf-8',
     addRandomSuffix: false,
   })
