@@ -424,7 +424,7 @@ export default function DashboardClient({ resumen }: { resumen: YappyResumen }) 
           )}
 
           {/* Accesos rápidos */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
             <Link href="/recurrentes" style={{ textDecoration: 'none' }}>
               <div style={{
                 background: '#fff', borderRadius: 16, padding: '14px 16px',
@@ -450,6 +450,36 @@ export default function DashboardClient({ resumen }: { resumen: YappyResumen }) 
               </div>
             </Link>
           </div>
+          <Link href="/movimientos" style={{ textDecoration: 'none', display: 'block', marginBottom: 10 }}>
+            <div style={{
+              background: '#fff', borderRadius: 16, padding: '14px 16px',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#BA7517', display: 'inline-block' }} />
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#111' }}>Movimientos banco</div>
+                  <div style={{ fontSize: 11, color: '#aaa', marginTop: 1 }}>Resumen · saldo · plan vs real</div>
+                </div>
+              </div>
+              <span style={{ fontSize: 13, color: '#aaa' }}>→</span>
+            </div>
+          </Link>
+          <Link href="/gastos" style={{ textDecoration: 'none', display: 'block', marginBottom: 12 }}>
+            <div style={{
+              background: '#fff', borderRadius: 16, padding: '14px 16px',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#111827', display: 'inline-block' }} />
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#111' }}>Gastos totales</div>
+                  <div style={{ fontSize: 11, color: '#aaa', marginTop: 1 }}>Yappy + tarjeta · por mes</div>
+                </div>
+              </div>
+              <span style={{ fontSize: 13, color: '#aaa' }}>→</span>
+            </div>
+          </Link>
 
           {/* Lista */}
           <div style={{ background: '#fff', borderRadius: 16, padding: '16px' }}>
