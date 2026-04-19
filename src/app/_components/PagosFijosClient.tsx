@@ -181,6 +181,7 @@ function ModalNuevoPago({ onGuardar, onCerrar, pagoEditar }: {
         width: '100%', maxWidth: 480, background: '#fff',
         borderRadius: '20px 20px 0 0', padding: '20px 20px 36px',
         zIndex: 400, boxShadow: '0 -4px 30px rgba(0,0,0,0.15)',
+        maxHeight: '92vh', overflowY: 'auto',
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
           <span style={{ fontSize: 16, fontWeight: 700 }}>{pagoEditar ? 'Editar pago' : 'Nuevo pago fijo'}</span>
@@ -351,6 +352,18 @@ function VistaEdicion({ pagos, onEliminar, onAgregar, onEditar, onCerrar }: {
   onEditar: (p: PagoFijo) => void
   onCerrar: () => void
 }) {
+  const [confirmando, setConfirmando] = useState<string | null>(null)
+
+  function handleEliminar(id: string) {
+    if (confirmando === id) {
+      onEliminar(id)
+      setConfirmando(null)
+    } else {
+      setConfirmando(id)
+      setTimeout(() => setConfirmando(null), 3000)
+    }
+  }
+
   const porCategoria = useMemo(() => {
     const map = new Map<PagoFijoCategoria, PagoFijo[]>()
     for (const cat of ORDEN) map.set(cat, [])
@@ -414,17 +427,28 @@ function VistaEdicion({ pagos, onEliminar, onAgregar, onEditar, onCerrar }: {
                   >
                     ✏️
                   </button>
-                  <button
-                    onClick={() => onEliminar(p.id)}
-                    style={{
-                      width: 28, height: 28, borderRadius: '50%', border: 'none',
-                      background: '#FEE2E2', color: '#DC2626', fontSize: 14,
-                      cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      flexShrink: 0,
-                    }}
-                  >
-                    ✕
-                  </button>
+                  {confirmando === p.id ? (
+                    <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                      <button onClick={() => handleEliminar(p.id)} style={{ background: '#DC2626', color: '#fff', border: 'none', borderRadius: 6, padding: '4px 8px', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+                        Eliminar
+                      </button>
+                      <button onClick={() => setConfirmando(null)} style={{ background: '#F0F0F0', color: '#555', border: 'none', borderRadius: 6, padding: '4px 8px', fontSize: 11, cursor: 'pointer' }}>
+                        No
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => handleEliminar(p.id)}
+                      style={{
+                        width: 28, height: 28, borderRadius: '50%', border: 'none',
+                        background: '#FEE2E2', color: '#DC2626', fontSize: 14,
+                        cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        flexShrink: 0,
+                      }}
+                    >
+                      ✕
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
@@ -524,10 +548,14 @@ function Seccion({ categoria, items, checked, onToggle, colapsada, onToggleColap
         </div>
       </div>
 
-      {/* Contenido colapsable */}
-      {!colapsada && (
-        <>
-          {items.map(i => (
+      {/* Contenido colapsable con animación */}
+      <div style={{
+        overflow: 'hidden',
+        maxHeight: colapsada ? 0 : 2000,
+        opacity: colapsada ? 0 : 1,
+        transition: 'max-height 0.3s ease, opacity 0.2s ease',
+      }}>
+        {items.map(i => (
             <div key={i.id}>
               <PagoItem item={i} checked={checked.has(i.id)} onToggle={() => onToggle(i.id)} />
               {/* Meta de ahorro individual */}
@@ -555,9 +583,8 @@ function Seccion({ categoria, items, checked, onToggle, colapsada, onToggleColap
                 </div>
               )}
             </div>
-          ))}
-        </>
-      )}
+        ))}
+      </div>
     </div>
   )
 }
@@ -652,7 +679,7 @@ export default function PagosFijosClient({ pagos: pagosIniciales, facturas }: { 
         const item = items.find(i => i.id === id)
         if (item) {
           const nuevoPagado = items.filter(i => next.has(i.id)).reduce((s, i) => s + i.monto, 0)
-          const sobra = INGRESO_QUINCENAL - totalGeneral
+          const sobra = INGRESO_QUINCENAL - nuevoPagado
           if (toastTimer.current) clearTimeout(toastTimer.current)
           setToast({ nombre: item.nombre, pagado: nuevoPagado, sobra })
           toastTimer.current = setTimeout(() => setToast(null), 3500)
@@ -738,19 +765,23 @@ export default function PagosFijosClient({ pagos: pagosIniciales, facturas }: { 
           </button>
         </div>
 
-        <div style={{ fontSize: 13, opacity: 0.6, marginTop: 8, marginBottom: 4 }}>Quincena del</div>
-        <div style={{ fontSize: 24, fontWeight: 700 }}>Pagos fijos</div>
-        <div style={{ fontSize: 15, fontWeight: 700, opacity: 0.9, marginTop: 2 }}>{quincenaLabel}</div>
+        {/* Título + fecha */}
+        <div style={{ marginTop: 8 }}>
+          <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: -0.5 }}>Pagos fijos</div>
+          <div style={{ fontSize: 13, opacity: 0.55, marginTop: 2 }}>Quincena del {quincenaLabel}</div>
+        </div>
 
         {/* Barra de progreso */}
-        <div style={{ marginTop: 20 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-            <span style={{ fontSize: 13, opacity: 0.8 }}>
-              {fmt(totalPagado)} <span style={{ opacity: 0.6 }}>de {fmt(totalGeneral)}</span>
+        <div style={{ marginTop: 18 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
+            <span style={{ fontSize: 12, opacity: 0.7 }}>
+              {fmt(totalPagado)} pagados de {fmt(totalGeneral)}
             </span>
-            <span style={{ fontSize: 13, fontWeight: 700 }}>{porcentaje.toFixed(0)}%</span>
+            <span style={{ fontSize: 20, fontWeight: 900, color: porcentaje === 100 ? '#4AE8A2' : '#fff' }}>
+              {porcentaje.toFixed(0)}%
+            </span>
           </div>
-          <div style={{ background: 'rgba(255,255,255,0.15)', borderRadius: 8, height: 8, overflow: 'hidden' }}>
+          <div style={{ background: 'rgba(255,255,255,0.12)', borderRadius: 8, height: 7, overflow: 'hidden' }}>
             <div style={{
               height: '100%', borderRadius: 8,
               background: porcentaje === 100 ? '#1D9E75' : '#4A90FF',
@@ -760,37 +791,41 @@ export default function PagosFijosClient({ pagos: pagosIniciales, facturas }: { 
           </div>
         </div>
 
-        {/* Ingreso */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16, background: 'rgba(255,255,255,0.08)', borderRadius: 12, padding: '10px 14px' }}>
-          <div>
-            <div style={{ fontSize: 11, opacity: 0.6 }}>Ingreso quincenal</div>
-            <div style={{ fontSize: 16, fontWeight: 700 }}>{fmt(INGRESO_QUINCENAL)}</div>
+        {/* 2 tarjetas principales */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 14 }}>
+          {/* En mano — dinámico */}
+          <div style={{ background: 'rgba(74,232,162,0.12)', borderRadius: 14, padding: '12px 14px', border: '1px solid rgba(74,232,162,0.2)' }}>
+            <div style={{ fontSize: 10, fontWeight: 600, opacity: 0.7, marginBottom: 2 }}>EN MANO AHORA</div>
+            <div style={{ fontSize: 20, fontWeight: 900, color: '#4AE8A2', lineHeight: 1 }}>
+              {fmt(INGRESO_QUINCENAL - totalPagado)}
+            </div>
+            <div style={{ fontSize: 10, opacity: 0.5, marginTop: 3 }}>ingreso − pagado</div>
           </div>
-          <div style={{ width: 1, height: 32, background: 'rgba(255,255,255,0.15)' }} />
-          <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: 11, opacity: 0.6 }}>Libre al final</div>
-            <div style={{ fontSize: 16, fontWeight: 800, color: INGRESO_QUINCENAL - totalGeneral >= 0 ? '#4AE8A2' : '#FF6B6B' }}>
+          {/* Al terminar — estático */}
+          <div style={{ background: 'rgba(255,255,255,0.08)', borderRadius: 14, padding: '12px 14px' }}>
+            <div style={{ fontSize: 10, fontWeight: 600, opacity: 0.7, marginBottom: 2 }}>AL TERMINAR</div>
+            <div style={{
+              fontSize: 20, fontWeight: 900, lineHeight: 1,
+              color: INGRESO_QUINCENAL - totalGeneral >= 0 ? '#fff' : '#FF6B6B',
+            }}>
               {fmt(INGRESO_QUINCENAL - totalGeneral)}
             </div>
+            <div style={{ fontSize: 10, opacity: 0.5, marginTop: 3 }}>después de todo</div>
           </div>
         </div>
 
-        {/* Resumen: 3 tarjetas */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginTop: 10 }}>
-          <div style={{ background: 'rgba(255,255,255,0.1)', borderRadius: 12, padding: '10px 12px' }}>
-            <div style={{ fontSize: 10, opacity: 0.7 }}>Pagado</div>
-            <div style={{ fontSize: 17, fontWeight: 800, color: '#4AE8A2' }}>{fmt(totalPagado)}</div>
-          </div>
-          <div style={{ background: 'rgba(255,255,255,0.1)', borderRadius: 12, padding: '10px 12px' }}>
-            <div style={{ fontSize: 10, opacity: 0.7 }}>Por pagar</div>
-            <div style={{ fontSize: 17, fontWeight: 800 }}>{fmt(totalGeneral - totalPagado)}</div>
-          </div>
-          <div style={{ background: 'rgba(255,255,255,0.15)', borderRadius: 12, padding: '10px 12px', border: '1px solid rgba(74,232,162,0.3)' }}>
-            <div style={{ fontSize: 10, opacity: 0.7 }}>En mano</div>
-            <div style={{ fontSize: 17, fontWeight: 800, color: '#4AE8A2' }}>
-              {fmt(INGRESO_QUINCENAL - totalPagado)}
+        {/* Fila secundaria: ingreso + pagado + por pagar */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 12, padding: '0 2px' }}>
+          {[
+            { label: 'Ingreso', value: fmt(INGRESO_QUINCENAL) },
+            { label: 'Pagado', value: fmt(totalPagado) },
+            { label: 'Por pagar', value: fmt(totalGeneral - totalPagado) },
+          ].map(({ label, value }) => (
+            <div key={label} style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 10, opacity: 0.45 }}>{label}</div>
+              <div style={{ fontSize: 12, fontWeight: 700, marginTop: 1 }}>{value}</div>
             </div>
-          </div>
+          ))}
         </div>
       </div>
 
