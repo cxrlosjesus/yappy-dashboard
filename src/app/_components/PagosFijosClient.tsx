@@ -5,6 +5,7 @@ import { useState, useEffect, useMemo } from 'react'
 import type { PagoFijo, PagoFijoCategoria } from '@/types/pagos-fijos'
 import type { Factura } from '@/lib/facturas-queries'
 import ChatPagos from './ChatPagos'
+import ResumenFinanciero from './ResumenFinanciero'
 
 const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
 const STORAGE_LISTA = 'pagos_fijos_lista'
@@ -121,6 +122,7 @@ interface FormNuevoPago {
   emoji: string
   categoria: PagoFijoCategoria
   dia_cobro: string
+  quincenas: string  // '' = permanente, número = temporal
 }
 
 function ModalNuevoPago({ onGuardar, onCerrar }: {
@@ -128,7 +130,7 @@ function ModalNuevoPago({ onGuardar, onCerrar }: {
   onCerrar: () => void
 }) {
   const [form, setForm] = useState<FormNuevoPago>({
-    nombre: '', monto: '', emoji: '💳', categoria: 'variable', dia_cobro: '',
+    nombre: '', monto: '', emoji: '💳', categoria: 'variable', dia_cobro: '', quincenas: '',
   })
   const [showEmojis, setShowEmojis] = useState(false)
 
@@ -138,6 +140,7 @@ function ModalNuevoPago({ onGuardar, onCerrar }: {
     if (!form.nombre.trim() || !form.monto) return
     const monto = parseFloat(form.monto)
     if (isNaN(monto) || monto <= 0) return
+    const quincenasNum = form.quincenas ? parseInt(form.quincenas) : undefined
     const nuevo: PagoFijo = {
       id: `custom-${Date.now()}`,
       nombre: form.nombre.trim(),
@@ -145,6 +148,7 @@ function ModalNuevoPago({ onGuardar, onCerrar }: {
       emoji: form.emoji,
       categoria: form.categoria,
       ...(necesitaDia && form.dia_cobro ? { dia_cobro: parseInt(form.dia_cobro) } : {}),
+      ...(quincenasNum && quincenasNum > 0 ? { quincenas_restantes: quincenasNum } : {}),
     }
     onGuardar(nuevo)
   }
@@ -247,6 +251,31 @@ function ModalNuevoPago({ onGuardar, onCerrar }: {
           </div>
         )}
 
+        {/* Duración */}
+        <div style={{ marginBottom: 14 }}>
+          <div style={{ fontSize: 11, color: '#888', marginBottom: 6, fontWeight: 600 }}>DURACIÓN</div>
+          <div style={{ display: 'flex', gap: 6 }}>
+            {['', '1', '2', '3', '6'].map(v => (
+              <button
+                key={v}
+                onClick={() => setForm(f => ({ ...f, quincenas: v }))}
+                style={{
+                  flex: 1, padding: '8px 4px', borderRadius: 8, border: '1.5px solid',
+                  borderColor: form.quincenas === v ? '#1A1A2E' : '#E8E8E8',
+                  background: form.quincenas === v ? '#1A1A2E' : '#fff',
+                  color: form.quincenas === v ? '#fff' : '#555',
+                  fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                }}
+              >
+                {v === '' ? 'Fijo' : `${v}Q`}
+              </button>
+            ))}
+          </div>
+          <div style={{ fontSize: 10, color: '#aaa', marginTop: 4 }}>
+            {form.quincenas ? `Se elimina automáticamente después de ${form.quincenas} quincena(s)` : 'Pago permanente'}
+          </div>
+        </div>
+
         <button
           onClick={guardar}
           disabled={!form.nombre.trim() || !form.monto}
@@ -308,7 +337,17 @@ function VistaEdicion({ pagos, onEliminar, onAgregar, onCerrar }: {
                 }}>
                   <span style={{ fontSize: 20 }}>{p.emoji}</span>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 14, fontWeight: 500, color: '#111' }}>{p.nombre}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ fontSize: 14, fontWeight: 500, color: '#111' }}>{p.nombre}</span>
+                      {p.quincenas_restantes !== undefined && (
+                        <span style={{
+                          fontSize: 10, fontWeight: 700, background: '#FEF3C7', color: '#92400E',
+                          borderRadius: 4, padding: '1px 5px',
+                        }}>
+                          {p.quincenas_restantes}Q
+                        </span>
+                      )}
+                    </div>
                     {p.dia_cobro && (
                       <div style={{ fontSize: 11, color: '#aaa' }}>Cobra el día {p.dia_cobro}</div>
                     )}
@@ -447,7 +486,25 @@ export default function PagosFijosClient({ pagos: pagosIniciales, facturas }: { 
   useEffect(() => {
     try {
       const savedLista = localStorage.getItem(STORAGE_LISTA)
-      if (savedLista) setPagos(JSON.parse(savedLista))
+      if (savedLista) {
+        let lista: PagoFijo[] = JSON.parse(savedLista)
+
+        // Decrementar gastos temporales si la quincena cambió
+        const ultimaQuincenaKey = 'ultima_quincena'
+        const ultimaQuincena = localStorage.getItem(ultimaQuincenaKey)
+        if (ultimaQuincena && ultimaQuincena !== quincenaId) {
+          // Nueva quincena: decrementar y eliminar los que llegan a 0
+          lista = lista
+            .map(p => p.quincenas_restantes !== undefined
+              ? { ...p, quincenas_restantes: p.quincenas_restantes - 1 }
+              : p
+            )
+            .filter(p => p.quincenas_restantes === undefined || p.quincenas_restantes > 0)
+          localStorage.setItem(STORAGE_LISTA, JSON.stringify(lista))
+        }
+        localStorage.setItem(ultimaQuincenaKey, quincenaId)
+        setPagos(lista)
+      }
     } catch {}
     setListaLoaded(true)
 
@@ -456,7 +513,7 @@ export default function PagosFijosClient({ pagos: pagosIniciales, facturas }: { 
       if (saved) setChecked(new Set(JSON.parse(saved)))
     } catch {}
     setLoaded(true)
-  }, [storageKey])
+  }, [storageKey, quincenaId])
 
   // Persistir lista cuando cambia
   useEffect(() => {
@@ -604,6 +661,13 @@ export default function PagosFijosClient({ pagos: pagosIniciales, facturas }: { 
           />
         ))}
       </div>
+
+      <ResumenFinanciero
+        pagos={pagos}
+        ingresoQuincenal={INGRESO_QUINCENAL}
+        quincenaActualKey={quincenaId}
+        totalItems={items.length}
+      />
 
       <ChatPagos
         pagos={pagos}
