@@ -668,7 +668,7 @@ export default function PagosFijosClient({ pagos: pagosIniciales, facturas }: { 
           </div>
         </div>
 
-        {/* Ingreso y disponible */}
+        {/* Ingreso */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16, background: 'rgba(255,255,255,0.08)', borderRadius: 12, padding: '10px 14px' }}>
           <div>
             <div style={{ fontSize: 11, opacity: 0.6 }}>Ingreso quincenal</div>
@@ -676,25 +676,28 @@ export default function PagosFijosClient({ pagos: pagosIniciales, facturas }: { 
           </div>
           <div style={{ width: 1, height: 32, background: 'rgba(255,255,255,0.15)' }} />
           <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: 11, opacity: 0.6 }}>Disponible</div>
-            <div style={{
-              fontSize: 16, fontWeight: 800,
-              color: INGRESO_QUINCENAL - totalGeneral >= 0 ? '#4AE8A2' : '#FF6B6B',
-            }}>
+            <div style={{ fontSize: 11, opacity: 0.6 }}>Libre al final</div>
+            <div style={{ fontSize: 16, fontWeight: 800, color: INGRESO_QUINCENAL - totalGeneral >= 0 ? '#4AE8A2' : '#FF6B6B' }}>
               {fmt(INGRESO_QUINCENAL - totalGeneral)}
             </div>
           </div>
         </div>
 
-        {/* Resumen */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 10 }}>
-          <div style={{ background: 'rgba(255,255,255,0.1)', borderRadius: 12, padding: '12px' }}>
-            <div style={{ fontSize: 11, opacity: 0.7 }}>Pagado</div>
-            <div style={{ fontSize: 20, fontWeight: 800, color: '#4AE8A2' }}>{fmt(totalPagado)}</div>
+        {/* Resumen: 3 tarjetas */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginTop: 10 }}>
+          <div style={{ background: 'rgba(255,255,255,0.1)', borderRadius: 12, padding: '10px 12px' }}>
+            <div style={{ fontSize: 10, opacity: 0.7 }}>Pagado</div>
+            <div style={{ fontSize: 17, fontWeight: 800, color: '#4AE8A2' }}>{fmt(totalPagado)}</div>
           </div>
-          <div style={{ background: 'rgba(255,255,255,0.1)', borderRadius: 12, padding: '12px' }}>
-            <div style={{ fontSize: 11, opacity: 0.7 }}>Pendiente</div>
-            <div style={{ fontSize: 20, fontWeight: 800 }}>{fmt(totalGeneral - totalPagado)}</div>
+          <div style={{ background: 'rgba(255,255,255,0.1)', borderRadius: 12, padding: '10px 12px' }}>
+            <div style={{ fontSize: 10, opacity: 0.7 }}>Por pagar</div>
+            <div style={{ fontSize: 17, fontWeight: 800 }}>{fmt(totalGeneral - totalPagado)}</div>
+          </div>
+          <div style={{ background: 'rgba(255,255,255,0.15)', borderRadius: 12, padding: '10px 12px', border: '1px solid rgba(74,232,162,0.3)' }}>
+            <div style={{ fontSize: 10, opacity: 0.7 }}>En mano</div>
+            <div style={{ fontSize: 17, fontWeight: 800, color: '#4AE8A2' }}>
+              {fmt(INGRESO_QUINCENAL - totalPagado)}
+            </div>
           </div>
         </div>
       </div>
