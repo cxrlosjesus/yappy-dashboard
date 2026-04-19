@@ -125,12 +125,18 @@ interface FormNuevoPago {
   quincenas: string  // '' = permanente, número = temporal
 }
 
-function ModalNuevoPago({ onGuardar, onCerrar }: {
+function ModalNuevoPago({ onGuardar, onCerrar, pagoEditar }: {
   onGuardar: (p: PagoFijo) => void
   onCerrar: () => void
+  pagoEditar?: PagoFijo  // si viene, es modo edición
 }) {
   const [form, setForm] = useState<FormNuevoPago>({
-    nombre: '', monto: '', emoji: '💳', categoria: 'variable', dia_cobro: '', quincenas: '',
+    nombre: pagoEditar?.nombre ?? '',
+    monto:  pagoEditar?.monto  ? String(pagoEditar.monto) : '',
+    emoji:  pagoEditar?.emoji  ?? '💳',
+    categoria: pagoEditar?.categoria ?? 'variable',
+    dia_cobro: pagoEditar?.dia_cobro ? String(pagoEditar.dia_cobro) : '',
+    quincenas: pagoEditar?.quincenas_restantes ? String(pagoEditar.quincenas_restantes) : '',
   })
   const [showEmojis, setShowEmojis] = useState(false)
 
@@ -142,7 +148,7 @@ function ModalNuevoPago({ onGuardar, onCerrar }: {
     if (isNaN(monto) || monto <= 0) return
     const quincenasNum = form.quincenas ? parseInt(form.quincenas) : undefined
     const nuevo: PagoFijo = {
-      id: `custom-${Date.now()}`,
+      id: pagoEditar?.id ?? `custom-${Date.now()}`,  // conserva el ID si es edición
       nombre: form.nombre.trim(),
       monto,
       emoji: form.emoji,
@@ -163,7 +169,7 @@ function ModalNuevoPago({ onGuardar, onCerrar }: {
         zIndex: 400, boxShadow: '0 -4px 30px rgba(0,0,0,0.15)',
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          <span style={{ fontSize: 16, fontWeight: 700 }}>Nuevo pago fijo</span>
+          <span style={{ fontSize: 16, fontWeight: 700 }}>{pagoEditar ? 'Editar pago' : 'Nuevo pago fijo'}</span>
           <button onClick={onCerrar} style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: '#999' }}>✕</button>
         </div>
 
@@ -286,7 +292,7 @@ function ModalNuevoPago({ onGuardar, onCerrar }: {
             fontSize: 14, fontWeight: 700, cursor: form.nombre.trim() && form.monto ? 'pointer' : 'default',
           }}
         >
-          Agregar pago
+          {pagoEditar ? 'Guardar cambios' : 'Agregar pago'}
         </button>
       </div>
     </>
@@ -295,10 +301,11 @@ function ModalNuevoPago({ onGuardar, onCerrar }: {
 
 // ── Vista edición: lista completa de pagos ─────────────────────────────────────
 
-function VistaEdicion({ pagos, onEliminar, onAgregar, onCerrar }: {
+function VistaEdicion({ pagos, onEliminar, onAgregar, onEditar, onCerrar }: {
   pagos: PagoFijo[]
   onEliminar: (id: string) => void
   onAgregar: () => void
+  onEditar: (p: PagoFijo) => void
   onCerrar: () => void
 }) {
   const porCategoria = useMemo(() => {
@@ -353,6 +360,17 @@ function VistaEdicion({ pagos, onEliminar, onAgregar, onCerrar }: {
                     )}
                   </div>
                   <span style={{ fontSize: 14, fontWeight: 700, color: '#111' }}>{fmt(p.monto)}</span>
+                  <button
+                    onClick={() => onEditar(p)}
+                    style={{
+                      width: 28, height: 28, borderRadius: '50%', border: 'none',
+                      background: '#EEF2FF', color: '#4338CA', fontSize: 13,
+                      cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      flexShrink: 0,
+                    }}
+                  >
+                    ✏️
+                  </button>
                   <button
                     onClick={() => onEliminar(p.id)}
                     style={{
@@ -477,6 +495,7 @@ export default function PagosFijosClient({ pagos: pagosIniciales, facturas }: { 
   // Modo edición
   const [editando, setEditando] = useState(false)
   const [mostrarForm, setMostrarForm] = useState(false)
+  const [pagoEditar, setPagoEditar] = useState<PagoFijo | undefined>(undefined)
 
   // Checklist
   const [checked, setChecked] = useState<Set<string>>(new Set())
@@ -558,8 +577,19 @@ export default function PagosFijosClient({ pagos: pagosIniciales, facturas }: { 
   }
 
   function agregarPago(nuevo: PagoFijo) {
-    setPagos(prev => [...prev, nuevo])
+    if (pagoEditar) {
+      // Modo edición: reemplaza el pago existente
+      setPagos(prev => prev.map(p => p.id === nuevo.id ? nuevo : p))
+    } else {
+      setPagos(prev => [...prev, nuevo])
+    }
     setMostrarForm(false)
+    setPagoEditar(undefined)
+  }
+
+  function abrirEditar(p: PagoFijo) {
+    setPagoEditar(p)
+    setMostrarForm(true)
   }
 
   const items = useMemo(() => buildItems(pagos, quincenaDate, facturas), [pagos, quincenaDate, facturas])
@@ -581,13 +611,15 @@ export default function PagosFijosClient({ pagos: pagosIniciales, facturas }: { 
         <VistaEdicion
           pagos={pagos}
           onEliminar={eliminarPago}
-          onAgregar={() => setMostrarForm(true)}
+          onAgregar={() => { setPagoEditar(undefined); setMostrarForm(true) }}
+          onEditar={abrirEditar}
           onCerrar={() => setEditando(false)}
         />
         {mostrarForm && (
           <ModalNuevoPago
             onGuardar={agregarPago}
-            onCerrar={() => setMostrarForm(false)}
+            onCerrar={() => { setMostrarForm(false); setPagoEditar(undefined) }}
+            pagoEditar={pagoEditar}
           />
         )}
       </>

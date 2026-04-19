@@ -67,7 +67,7 @@ interface Props {
   pagos: PagoFijo[]
   ingresoQuincenal: number
   quincenaActualKey: string
-  totalItems: number
+  totalItems: number  // cantidad de ítems en la quincena actual (para detectar si histórica fue completa)
 }
 
 export default function ResumenFinanciero({ pagos, ingresoQuincenal, quincenaActualKey, totalItems }: Props) {
@@ -212,8 +212,8 @@ export default function ResumenFinanciero({ pagos, ingresoQuincenal, quincenaAct
         <div style={{ background: '#fff', borderRadius: 16, padding: '16px', marginBottom: 10 }}>
           <div style={{ fontSize: 13, fontWeight: 600, color: '#333', marginBottom: 12 }}>Historial de quincenas</div>
           {historial.map(h => {
-            const pct = totalItems > 0 ? Math.round((h.checkedIds.length / totalItems) * 100) : 0
-            const completa = pct >= 100
+            const n = h.checkedIds.length
+            const completa = n > 0 && n >= totalItems
             return (
               <div key={h.key} style={{
                 display: 'flex', alignItems: 'center', gap: 12,
@@ -225,22 +225,21 @@ export default function ResumenFinanciero({ pagos, ingresoQuincenal, quincenaAct
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontSize: 16,
                 }}>
-                  {completa ? '✅' : '📋'}
+                  {n === 0 ? '📋' : completa ? '✅' : '🔄'}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: '#111' }}>{h.label}</div>
-                  <div style={{ background: '#F0F0F0', borderRadius: 4, height: 4, marginTop: 5, overflow: 'hidden' }}>
-                    <div style={{
-                      height: '100%',
-                      background: completa ? '#1D9E75' : '#4A90FF',
-                      width: `${pct}%`,
-                      borderRadius: 4,
-                    }} />
+                  <div style={{ fontSize: 11, color: '#aaa', marginTop: 2 }}>
+                    {n === 0 ? 'Sin registros' : `${n} pago${n !== 1 ? 's' : ''} marcado${n !== 1 ? 's' : ''}`}
                   </div>
                 </div>
                 <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: completa ? '#1D9E75' : '#111' }}>{pct}%</div>
-                  <div style={{ fontSize: 11, color: '#aaa' }}>{h.checkedIds.length}/{totalItems}</div>
+                  {completa
+                    ? <div style={{ fontSize: 12, fontWeight: 700, color: '#1D9E75' }}>Completa</div>
+                    : n > 0
+                      ? <div style={{ fontSize: 12, fontWeight: 700, color: '#4A90FF' }}>Parcial</div>
+                      : <div style={{ fontSize: 12, color: '#ccc' }}>—</div>
+                  }
                 </div>
               </div>
             )
