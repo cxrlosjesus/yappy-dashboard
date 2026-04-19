@@ -489,13 +489,14 @@ function PagoItem({ item, checked, onToggle }: {
       }}
     >
       <div style={{
-        width: 22, height: 22, borderRadius: 6, flexShrink: 0,
-        border: checked ? 'none' : '2px solid #DDD',
-        background: checked ? '#1D9E75' : 'transparent',
+        width: 24, height: 24, borderRadius: 7, flexShrink: 0,
+        border: checked ? 'none' : '2px solid #E0E0E0',
+        background: checked ? 'linear-gradient(135deg, #1D9E75, #4AE8A2)' : '#fff',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        transition: 'all 0.15s',
+        transition: 'all 0.18s cubic-bezier(0.4,0,0.2,1)',
+        boxShadow: checked ? '0 2px 8px rgba(29,158,117,0.35)' : '0 1px 3px rgba(0,0,0,0.06)',
       }}>
-        {checked && <span style={{ color: '#fff', fontSize: 13, fontWeight: 700 }}>✓</span>}
+        {checked && <span style={{ color: '#fff', fontSize: 13, fontWeight: 800 }}>✓</span>}
       </div>
       <span style={{ fontSize: 20, flexShrink: 0 }}>{item.emoji}</span>
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -528,7 +529,7 @@ function Seccion({ categoria, items, checked, onToggle, colapsada, onToggleColap
   const listo = pagado === total
 
   return (
-    <div style={{ background: '#fff', borderRadius: 16, padding: '14px 16px', marginBottom: 10 }}>
+    <div style={{ background: '#fff', borderRadius: 18, padding: '14px 16px', marginBottom: 10, boxShadow: '0 1px 6px rgba(0,0,0,0.06)' }}>
       {/* Cabecera — siempre visible, clickeable para colapsar */}
       <div
         onClick={onToggleColapso}
@@ -747,89 +748,126 @@ export default function PagosFijosClient({ pagos: pagosIniciales, facturas }: { 
 
   // Vista checklist
   return (
-    <div style={{ maxWidth: 480, margin: '0 auto', paddingBottom: 40 }}>
+    <div style={{ maxWidth: 480, margin: '0 auto', paddingBottom: 40, background: '#F2F3F7', minHeight: '100vh' }}>
 
-      <div style={{ background: '#1A1A2E', color: '#fff', padding: '48px 20px 24px', borderRadius: '0 0 24px 24px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <Link href="/dashboard" style={{ color: 'rgba(255,255,255,0.6)', textDecoration: 'none', fontSize: 13 }}>
+      {/* ── HEADER ─────────────────────────────────────────────────────────── */}
+      <div style={{
+        background: 'linear-gradient(160deg, #0D1B3E 0%, #1A1A2E 45%, #22103A 100%)',
+        color: '#fff',
+        padding: '52px 20px 28px',
+        borderRadius: '0 0 28px 28px',
+        boxShadow: '0 8px 32px rgba(13,27,62,0.35)',
+      }}>
+        {/* Nav */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Link href="/dashboard" style={{
+            color: 'rgba(255,255,255,0.5)', textDecoration: 'none', fontSize: 13,
+            display: 'flex', alignItems: 'center', gap: 4,
+          }}>
             ← Dashboard
           </Link>
           <button
             onClick={() => setEditando(true)}
             style={{
-              background: 'rgba(255,255,255,0.12)', border: 'none', color: '#fff',
-              borderRadius: 8, padding: '5px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+              background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)',
+              color: 'rgba(255,255,255,0.85)', borderRadius: 20, padding: '5px 13px',
+              fontSize: 12, fontWeight: 600, cursor: 'pointer', backdropFilter: 'blur(8px)',
             }}
           >
-            ✏️ Editar lista
+            ✏️ Editar
           </button>
         </div>
 
-        {/* Título + fecha */}
-        <div style={{ marginTop: 8 }}>
-          <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: -0.5 }}>Pagos fijos</div>
-          <div style={{ fontSize: 13, opacity: 0.55, marginTop: 2 }}>Quincena del {quincenaLabel}</div>
+        {/* Título */}
+        <div style={{ marginTop: 16, marginBottom: 20 }}>
+          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: 1.5, opacity: 0.4, textTransform: 'uppercase', marginBottom: 4 }}>
+            Quincena del {quincenaLabel}
+          </div>
+          <div style={{ fontSize: 26, fontWeight: 900, letterSpacing: -0.5, lineHeight: 1 }}>
+            Pagos fijos
+          </div>
         </div>
 
         {/* Barra de progreso */}
-        <div style={{ marginTop: 18 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
-            <span style={{ fontSize: 12, opacity: 0.7 }}>
-              {fmt(totalPagado)} pagados de {fmt(totalGeneral)}
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <span style={{ fontSize: 12, opacity: 0.55 }}>
+              {fmt(totalPagado)} de {fmt(totalGeneral)}
             </span>
-            <span style={{ fontSize: 20, fontWeight: 900, color: porcentaje === 100 ? '#4AE8A2' : '#fff' }}>
-              {porcentaje.toFixed(0)}%
+            <span style={{
+              fontSize: 15, fontWeight: 800,
+              color: porcentaje === 100 ? '#4AE8A2' : 'rgba(255,255,255,0.9)',
+              background: porcentaje === 100 ? 'rgba(74,232,162,0.15)' : 'rgba(255,255,255,0.08)',
+              borderRadius: 20, padding: '2px 10px',
+            }}>
+              {porcentaje === 100 ? '✓ Completo' : `${porcentaje.toFixed(0)}%`}
             </span>
           </div>
-          <div style={{ background: 'rgba(255,255,255,0.12)', borderRadius: 8, height: 7, overflow: 'hidden' }}>
+          <div style={{ background: 'rgba(255,255,255,0.08)', borderRadius: 10, height: 9, overflow: 'hidden' }}>
             <div style={{
-              height: '100%', borderRadius: 8,
-              background: porcentaje === 100 ? '#1D9E75' : '#4A90FF',
+              height: '100%', borderRadius: 10,
+              background: porcentaje === 100
+                ? 'linear-gradient(90deg, #1D9E75, #4AE8A2)'
+                : 'linear-gradient(90deg, #4A90FF, #7B5EA7)',
               width: `${porcentaje}%`,
-              transition: 'width 0.4s ease',
+              transition: 'width 0.5s cubic-bezier(0.4,0,0.2,1)',
+              boxShadow: porcentaje > 0 ? '0 0 12px rgba(74,144,255,0.5)' : 'none',
             }} />
           </div>
         </div>
 
-        {/* 2 tarjetas principales */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 14 }}>
-          {/* En mano — dinámico */}
-          <div style={{ background: 'rgba(74,232,162,0.12)', borderRadius: 14, padding: '12px 14px', border: '1px solid rgba(74,232,162,0.2)' }}>
-            <div style={{ fontSize: 10, fontWeight: 600, opacity: 0.7, marginBottom: 2 }}>EN MANO AHORA</div>
-            <div style={{ fontSize: 20, fontWeight: 900, color: '#4AE8A2', lineHeight: 1 }}>
+        {/* 2 tarjetas glassmorphism */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <div style={{
+            background: 'rgba(74,232,162,0.1)',
+            border: '1px solid rgba(74,232,162,0.25)',
+            borderRadius: 16, padding: '14px 16px',
+            backdropFilter: 'blur(12px)',
+          }}>
+            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1, color: '#4AE8A2', marginBottom: 6 }}>EN MANO AHORA</div>
+            <div style={{ fontSize: 22, fontWeight: 900, color: '#4AE8A2', lineHeight: 1, letterSpacing: -0.5 }}>
               {fmt(INGRESO_QUINCENAL - totalPagado)}
             </div>
-            <div style={{ fontSize: 10, opacity: 0.5, marginTop: 3 }}>ingreso − pagado</div>
+            <div style={{ fontSize: 10, opacity: 0.4, marginTop: 4 }}>ingreso − lo pagado</div>
           </div>
-          {/* Al terminar — estático */}
-          <div style={{ background: 'rgba(255,255,255,0.08)', borderRadius: 14, padding: '12px 14px' }}>
-            <div style={{ fontSize: 10, fontWeight: 600, opacity: 0.7, marginBottom: 2 }}>AL TERMINAR</div>
+
+          <div style={{
+            background: 'rgba(255,255,255,0.06)',
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: 16, padding: '14px 16px',
+            backdropFilter: 'blur(12px)',
+          }}>
+            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1, opacity: 0.5, marginBottom: 6 }}>AL TERMINAR TODO</div>
             <div style={{
-              fontSize: 20, fontWeight: 900, lineHeight: 1,
+              fontSize: 22, fontWeight: 900, lineHeight: 1, letterSpacing: -0.5,
               color: INGRESO_QUINCENAL - totalGeneral >= 0 ? '#fff' : '#FF6B6B',
             }}>
               {fmt(INGRESO_QUINCENAL - totalGeneral)}
             </div>
-            <div style={{ fontSize: 10, opacity: 0.5, marginTop: 3 }}>después de todo</div>
+            <div style={{ fontSize: 10, opacity: 0.4, marginTop: 4 }}>después de todos los pagos</div>
           </div>
         </div>
 
-        {/* Fila secundaria: ingreso + pagado + por pagar */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 12, padding: '0 2px' }}>
+        {/* Píldoras secundarias */}
+        <div style={{ display: 'flex', gap: 6, marginTop: 12 }}>
           {[
-            { label: 'Ingreso', value: fmt(INGRESO_QUINCENAL) },
-            { label: 'Pagado', value: fmt(totalPagado) },
-            { label: 'Por pagar', value: fmt(totalGeneral - totalPagado) },
-          ].map(({ label, value }) => (
-            <div key={label} style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 10, opacity: 0.45 }}>{label}</div>
-              <div style={{ fontSize: 12, fontWeight: 700, marginTop: 1 }}>{value}</div>
+            { label: 'Ingreso', value: fmt(INGRESO_QUINCENAL), color: 'rgba(255,255,255,0.06)' },
+            { label: 'Pagado', value: fmt(totalPagado), color: 'rgba(74,232,162,0.08)' },
+            { label: 'Por pagar', value: fmt(totalGeneral - totalPagado), color: 'rgba(255,255,255,0.06)' },
+          ].map(({ label, value, color }) => (
+            <div key={label} style={{
+              flex: 1, background: color, borderRadius: 10, padding: '7px 8px', textAlign: 'center',
+              border: '1px solid rgba(255,255,255,0.07)',
+            }}>
+              <div style={{ fontSize: 9, opacity: 0.45, marginBottom: 2 }}>{label}</div>
+              <div style={{ fontSize: 11, fontWeight: 700 }}>{value}</div>
             </div>
           ))}
         </div>
       </div>
 
-      <div style={{ padding: '16px 16px 0' }}>
+      {/* ── SECCIONES ──────────────────────────────────────────────────────── */}
+      <div style={{ padding: '14px 14px 0' }}>
         {ORDEN.map(cat => (
           <Seccion
             key={cat}
@@ -843,33 +881,38 @@ export default function PagosFijosClient({ pagos: pagosIniciales, facturas }: { 
         ))}
       </div>
 
-      {/* Toast de feedback al marcar */}
+      {/* ── TOAST ──────────────────────────────────────────────────────────── */}
       <style>{`
-        @keyframes toastIn  { from { transform: translateY(20px); opacity: 0 } to { transform: translateY(0); opacity: 1 } }
-        @keyframes toastOut { from { opacity: 1 } to { opacity: 0 } }
+        @keyframes toastIn { from { transform: translateY(16px) translateX(-50%); opacity: 0 } to { transform: translateY(0) translateX(-50%); opacity: 1 } }
       `}</style>
       {toast && (
         <div style={{
-          position: 'fixed', bottom: 88, left: '50%', transform: 'translateX(-50%)',
-          width: 'calc(100% - 32px)', maxWidth: 448,
-          background: '#1A1A2E', color: '#fff',
-          borderRadius: 16, padding: '14px 16px',
-          boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
-          zIndex: 90, animation: 'toastIn 0.25s ease',
+          position: 'fixed', bottom: 90, left: '50%', transform: 'translateX(-50%)',
+          width: 'calc(100% - 28px)', maxWidth: 452,
+          background: 'linear-gradient(135deg, #0D1B3E, #1A1A2E)',
+          border: '1px solid rgba(74,232,162,0.2)',
+          color: '#fff', borderRadius: 18, padding: '13px 16px',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.35), 0 0 0 1px rgba(74,232,162,0.1)',
+          zIndex: 90, animation: 'toastIn 0.3s cubic-bezier(0.34,1.56,0.64,1)',
           display: 'flex', alignItems: 'center', gap: 12,
         }}>
           <div style={{
-            width: 36, height: 36, borderRadius: 10, background: '#1D9E75',
+            width: 38, height: 38, borderRadius: 12, flexShrink: 0,
+            background: 'linear-gradient(135deg, #1D9E75, #4AE8A2)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 18, flexShrink: 0,
+            fontSize: 17, boxShadow: '0 0 14px rgba(74,232,162,0.35)',
           }}>✓</div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 2 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 3 }}>
               {toast.nombre} pagado
             </div>
-            <div style={{ fontSize: 12, opacity: 0.7 }}>
-              Llevas <span style={{ color: '#4AE8A2', fontWeight: 700 }}>{fmt(toast.pagado)}</span> pagados
-              · Te sobran <span style={{ color: '#4AE8A2', fontWeight: 700 }}>{fmt(toast.sobra)}</span> libres
+            <div style={{ display: 'flex', gap: 12 }}>
+              <span style={{ fontSize: 11, opacity: 0.55 }}>
+                Pagado <span style={{ color: '#4AE8A2', fontWeight: 700, opacity: 1 }}>{fmt(toast.pagado)}</span>
+              </span>
+              <span style={{ fontSize: 11, opacity: 0.55 }}>
+                En mano <span style={{ color: '#4AE8A2', fontWeight: 700, opacity: 1 }}>{fmt(toast.sobra)}</span>
+              </span>
             </div>
           </div>
         </div>
