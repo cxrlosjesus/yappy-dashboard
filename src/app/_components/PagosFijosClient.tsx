@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import type { PagoFijo, PagoFijoCategoria } from '@/types/pagos-fijos'
 import type { Factura } from '@/lib/facturas-queries'
 import ChatPagos from './ChatPagos'
@@ -482,6 +482,10 @@ export default function PagosFijosClient({ pagos: pagosIniciales, facturas }: { 
   const [checked, setChecked] = useState<Set<string>>(new Set())
   const [loaded, setLoaded] = useState(false)
 
+  // Toast
+  const [toast, setToast] = useState<{ nombre: string; pagado: number; sobra: number } | null>(null)
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   // Cargar lista y checklist desde localStorage
   useEffect(() => {
     try {
@@ -531,6 +535,19 @@ export default function PagosFijosClient({ pagos: pagosIniciales, facturas }: { 
     setChecked(prev => {
       const next = new Set(prev)
       next.has(id) ? next.delete(id) : next.add(id)
+
+      // Solo mostrar toast al marcar (no al desmarcar)
+      if (!prev.has(id)) {
+        const item = items.find(i => i.id === id)
+        if (item) {
+          const nuevoPagado = items.filter(i => next.has(i.id)).reduce((s, i) => s + i.monto, 0)
+          const sobra = INGRESO_QUINCENAL - totalGeneral
+          if (toastTimer.current) clearTimeout(toastTimer.current)
+          setToast({ nombre: item.nombre, pagado: nuevoPagado, sobra })
+          toastTimer.current = setTimeout(() => setToast(null), 3500)
+        }
+      }
+
       return next
     })
   }
@@ -661,6 +678,38 @@ export default function PagosFijosClient({ pagos: pagosIniciales, facturas }: { 
           />
         ))}
       </div>
+
+      {/* Toast de feedback al marcar */}
+      <style>{`
+        @keyframes toastIn  { from { transform: translateY(20px); opacity: 0 } to { transform: translateY(0); opacity: 1 } }
+        @keyframes toastOut { from { opacity: 1 } to { opacity: 0 } }
+      `}</style>
+      {toast && (
+        <div style={{
+          position: 'fixed', bottom: 88, left: '50%', transform: 'translateX(-50%)',
+          width: 'calc(100% - 32px)', maxWidth: 448,
+          background: '#1A1A2E', color: '#fff',
+          borderRadius: 16, padding: '14px 16px',
+          boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
+          zIndex: 90, animation: 'toastIn 0.25s ease',
+          display: 'flex', alignItems: 'center', gap: 12,
+        }}>
+          <div style={{
+            width: 36, height: 36, borderRadius: 10, background: '#1D9E75',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 18, flexShrink: 0,
+          }}>✓</div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 2 }}>
+              {toast.nombre} pagado
+            </div>
+            <div style={{ fontSize: 12, opacity: 0.7 }}>
+              Llevas <span style={{ color: '#4AE8A2', fontWeight: 700 }}>{fmt(toast.pagado)}</span> pagados
+              · Te sobran <span style={{ color: '#4AE8A2', fontWeight: 700 }}>{fmt(toast.sobra)}</span> libres
+            </div>
+          </div>
+        </div>
+      )}
 
       <ResumenFinanciero
         pagos={pagos}
