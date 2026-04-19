@@ -9,8 +9,8 @@ export const PAGOS_FIJOS: PagoFijo[] = [
   { id: 'telefono',       nombre: 'Tigo',               monto: 12.55,  emoji: '📱', categoria: 'cargo_bancario', dia_cobro: 15 },
 
   // ── Ahorro ────────────────────────────────────────────────────────────────
-  { id: 'ahorro-bg',      nombre: 'Ahorro Banco General', monto: 65.00, emoji: '💰', categoria: 'ahorro' },
-  { id: 'ahorro-banistmo',nombre: 'Ahorro Banistmo',      monto: 50.00, emoji: '💰', categoria: 'ahorro' },
+  { id: 'ahorro-bg',      nombre: 'Ahorro Banco General', monto: 65.00, emoji: '💰', categoria: 'ahorro', meta: 1440, acumulado: 565 },
+  { id: 'ahorro-banistmo',nombre: 'Ahorro Banistmo',      monto: 50.00, emoji: '💰', categoria: 'ahorro', meta: 1000, acumulado: 385 },
   { id: 'ahorro-extra',   nombre: 'Ahorro extra',         monto: 80.00, emoji: '🎯', categoria: 'ahorro' },
 
   // ── Gastos variables (presupuesto quincenal) ───────────────────────────────

@@ -6,8 +6,10 @@ export interface PagoFijo {
   monto: number
   emoji: string
   categoria: PagoFijoCategoria
-  dia_cobro?: number          // para suscripciones: día del mes que cobra
+  dia_cobro?: number           // para suscripciones: día del mes que cobra
   notas?: string
   quincenas_restantes?: number // gasto temporal: cuántas quincenas faltan
   quincena_inicio?: string     // ID de quincena en que fue agregado (para decrementar)
+  meta?: number                // meta de ahorro (solo categoría ahorro)
+  acumulado?: number           // cuánto llevan ahorrado actualmente
 }

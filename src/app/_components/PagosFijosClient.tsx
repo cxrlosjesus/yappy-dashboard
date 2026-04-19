@@ -64,6 +64,8 @@ interface ChecklistItem {
   emoji: string
   categoria: PagoFijoCategoria
   nota?: string
+  meta?: number
+  acumulado?: number
 }
 
 function buildItems(pagos: PagoFijo[], quincenaDate: Date, facturas: Factura[]): ChecklistItem[] {
@@ -94,7 +96,11 @@ function buildItems(pagos: PagoFijo[], quincenaDate: Date, facturas: Factura[]):
         }
       }
     } else if (p.categoria !== 'suscripcion' && p.categoria !== 'cargo_bancario') {
-      items.push({ id: p.id, nombre: p.nombre, monto: p.monto, emoji: p.emoji, categoria: p.categoria })
+      items.push({
+        id: p.id, nombre: p.nombre, monto: p.monto, emoji: p.emoji, categoria: p.categoria,
+        ...(p.meta !== undefined ? { meta: p.meta } : {}),
+        ...(p.acumulado !== undefined ? { acumulado: p.acumulado } : {}),
+      })
     }
   }
   return items
@@ -122,7 +128,9 @@ interface FormNuevoPago {
   emoji: string
   categoria: PagoFijoCategoria
   dia_cobro: string
-  quincenas: string  // '' = permanente, número = temporal
+  quincenas: string
+  meta: string
+  acumulado: string
 }
 
 function ModalNuevoPago({ onGuardar, onCerrar, pagoEditar }: {
@@ -131,12 +139,14 @@ function ModalNuevoPago({ onGuardar, onCerrar, pagoEditar }: {
   pagoEditar?: PagoFijo  // si viene, es modo edición
 }) {
   const [form, setForm] = useState<FormNuevoPago>({
-    nombre: pagoEditar?.nombre ?? '',
-    monto:  pagoEditar?.monto  ? String(pagoEditar.monto) : '',
-    emoji:  pagoEditar?.emoji  ?? '💳',
+    nombre:    pagoEditar?.nombre ?? '',
+    monto:     pagoEditar?.monto  ? String(pagoEditar.monto) : '',
+    emoji:     pagoEditar?.emoji  ?? '💳',
     categoria: pagoEditar?.categoria ?? 'variable',
     dia_cobro: pagoEditar?.dia_cobro ? String(pagoEditar.dia_cobro) : '',
     quincenas: pagoEditar?.quincenas_restantes ? String(pagoEditar.quincenas_restantes) : '',
+    meta:      pagoEditar?.meta      ? String(pagoEditar.meta)      : '',
+    acumulado: pagoEditar?.acumulado ? String(pagoEditar.acumulado) : '',
   })
   const [showEmojis, setShowEmojis] = useState(false)
 
@@ -147,14 +157,18 @@ function ModalNuevoPago({ onGuardar, onCerrar, pagoEditar }: {
     const monto = parseFloat(form.monto)
     if (isNaN(monto) || monto <= 0) return
     const quincenasNum = form.quincenas ? parseInt(form.quincenas) : undefined
+    const metaNum      = form.meta      ? parseFloat(form.meta)      : undefined
+    const acumuladoNum = form.acumulado ? parseFloat(form.acumulado) : undefined
     const nuevo: PagoFijo = {
-      id: pagoEditar?.id ?? `custom-${Date.now()}`,  // conserva el ID si es edición
+      id: pagoEditar?.id ?? `custom-${Date.now()}`,
       nombre: form.nombre.trim(),
       monto,
       emoji: form.emoji,
       categoria: form.categoria,
       ...(necesitaDia && form.dia_cobro ? { dia_cobro: parseInt(form.dia_cobro) } : {}),
       ...(quincenasNum && quincenasNum > 0 ? { quincenas_restantes: quincenasNum } : {}),
+      ...(metaNum      && metaNum > 0      ? { meta: metaNum }           : {}),
+      ...(acumuladoNum !== undefined        ? { acumulado: acumuladoNum } : {}),
     }
     onGuardar(nuevo)
   }
@@ -254,6 +268,35 @@ function ModalNuevoPago({ onGuardar, onCerrar, pagoEditar }: {
               placeholder="Ej: 15"
               style={{ width: '100%', border: '1.5px solid #E8E8E8', borderRadius: 10, padding: '10px 12px', fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
             />
+          </div>
+        )}
+
+        {/* Meta de ahorro (solo categoría ahorro) */}
+        {form.categoria === 'ahorro' && (
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ fontSize: 11, color: '#888', marginBottom: 6, fontWeight: 600 }}>META DE AHORRO (opcional)</div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 10, color: '#aaa', marginBottom: 3 }}>Meta ($)</div>
+                <input
+                  type="number" min="0" step="1"
+                  value={form.meta}
+                  onChange={e => setForm(f => ({ ...f, meta: e.target.value }))}
+                  placeholder="1000"
+                  style={{ width: '100%', border: '1.5px solid #E8E8E8', borderRadius: 10, padding: '9px 10px', fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 10, color: '#aaa', marginBottom: 3 }}>Llevas ($)</div>
+                <input
+                  type="number" min="0" step="1"
+                  value={form.acumulado}
+                  onChange={e => setForm(f => ({ ...f, acumulado: e.target.value }))}
+                  placeholder="385"
+                  style={{ width: '100%', border: '1.5px solid #E8E8E8', borderRadius: 10, padding: '9px 10px', fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
+                />
+              </div>
+            </div>
           </div>
         )}
 
@@ -446,11 +489,13 @@ function PagoItem({ item, checked, onToggle }: {
   )
 }
 
-function Seccion({ categoria, items, checked, onToggle }: {
+function Seccion({ categoria, items, checked, onToggle, colapsada, onToggleColapso }: {
   categoria: PagoFijoCategoria
   items: ChecklistItem[]
   checked: Set<string>
   onToggle: (id: string) => void
+  colapsada: boolean
+  onToggleColapso: () => void
 }) {
   if (items.length === 0) return null
   const config = CATEGORIA_CONFIG[categoria]
@@ -460,22 +505,59 @@ function Seccion({ categoria, items, checked, onToggle }: {
 
   return (
     <div style={{ background: '#fff', borderRadius: 16, padding: '14px 16px', marginBottom: 10 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+      {/* Cabecera — siempre visible, clickeable para colapsar */}
+      <div
+        onClick={onToggleColapso}
+        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', marginBottom: colapsada ? 0 : 12 }}
+      >
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ width: 8, height: 8, borderRadius: '50%', background: config.color, display: 'inline-block' }} />
           <span style={{ fontSize: 13, fontWeight: 600, color: '#333' }}>{config.label}</span>
+          {listo && <span style={{ fontSize: 10, color: '#1D9E75', fontWeight: 700, background: '#E8F8F2', borderRadius: 4, padding: '1px 5px' }}>✓</span>}
         </div>
-        <div style={{ textAlign: 'right' }}>
-          <span style={{ fontSize: 13, fontWeight: 700, color: '#111' }}>{fmt(total)}</span>
-          {listo
-            ? <span style={{ fontSize: 11, color: '#1D9E75', display: 'block', fontWeight: 700 }}>✓ Listo</span>
-            : pagado > 0 && <span style={{ fontSize: 11, color: '#aaa', display: 'block' }}>{fmt(pagado)} pagado</span>
-          }
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ textAlign: 'right' }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: '#111' }}>{fmt(total)}</span>
+            {!listo && pagado > 0 && <span style={{ fontSize: 11, color: '#aaa', display: 'block' }}>{fmt(pagado)} pagado</span>}
+          </div>
+          <span style={{ fontSize: 12, color: '#bbb', transform: colapsada ? 'rotate(-90deg)' : 'rotate(0deg)', transition: 'transform 0.2s', display: 'inline-block' }}>▼</span>
         </div>
       </div>
-      {items.map(i => (
-        <PagoItem key={i.id} item={i} checked={checked.has(i.id)} onToggle={() => onToggle(i.id)} />
-      ))}
+
+      {/* Contenido colapsable */}
+      {!colapsada && (
+        <>
+          {items.map(i => (
+            <div key={i.id}>
+              <PagoItem item={i} checked={checked.has(i.id)} onToggle={() => onToggle(i.id)} />
+              {/* Meta de ahorro individual */}
+              {i.meta !== undefined && i.acumulado !== undefined && (
+                <div style={{ marginBottom: 10, padding: '8px 0 4px 34px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                    <span style={{ fontSize: 11, color: '#888' }}>
+                      Llevas <span style={{ fontWeight: 700, color: '#1D9E75' }}>{fmt(i.acumulado)}</span>
+                    </span>
+                    <span style={{ fontSize: 11, color: '#aaa' }}>Meta {fmt(i.meta)}</span>
+                  </div>
+                  <div style={{ background: '#F0F0F0', borderRadius: 6, height: 5, overflow: 'hidden' }}>
+                    <div style={{
+                      height: '100%', borderRadius: 6,
+                      background: i.acumulado >= i.meta ? '#1D9E75' : '#4A90FF',
+                      width: `${Math.min((i.acumulado / i.meta) * 100, 100)}%`,
+                      transition: 'width 0.4s ease',
+                    }} />
+                  </div>
+                  <div style={{ fontSize: 10, color: '#aaa', marginTop: 3 }}>
+                    {i.acumulado >= i.meta
+                      ? '🎉 Meta alcanzada'
+                      : `${((i.acumulado / i.meta) * 100).toFixed(0)}% · faltan ${fmt(i.meta - i.acumulado)}`}
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </>
+      )}
     </div>
   )
 }
@@ -496,6 +578,16 @@ export default function PagosFijosClient({ pagos: pagosIniciales, facturas }: { 
   const [editando, setEditando] = useState(false)
   const [mostrarForm, setMostrarForm] = useState(false)
   const [pagoEditar, setPagoEditar] = useState<PagoFijo | undefined>(undefined)
+
+  // Secciones colapsadas
+  const [colapsadas, setColapsadas] = useState<Set<PagoFijoCategoria>>(new Set())
+  function toggleColapso(cat: PagoFijoCategoria) {
+    setColapsadas(prev => {
+      const next = new Set(prev)
+      next.has(cat) ? next.delete(cat) : next.add(cat)
+      return next
+    })
+  }
 
   // Checklist
   const [checked, setChecked] = useState<Set<string>>(new Set())
@@ -710,6 +802,8 @@ export default function PagosFijosClient({ pagos: pagosIniciales, facturas }: { 
             items={porCategoria.get(cat)!}
             checked={checked}
             onToggle={toggle}
+            colapsada={colapsadas.has(cat)}
+            onToggleColapso={() => toggleColapso(cat)}
           />
         ))}
       </div>
